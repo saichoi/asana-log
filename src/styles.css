@@ -1243,6 +1243,118 @@ ul {
   font-size: 14px;
 }
 
+/* ── 동기화 ─────────────────────────────── */
+.sync-panel {
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.sync-panel .notice {
+  margin: 14px 0 0;
+}
+
+.sync-panel__desc {
+  margin-bottom: 14px;
+}
+
+.button--google {
+  gap: 10px;
+  background: #fff;
+  border-color: var(--line);
+}
+
+.sync-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sync-account__avatar {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.sync-account__avatar--empty {
+  display: grid;
+  place-items: center;
+  background: var(--sage-soft);
+  color: var(--sage-deep);
+  font-weight: 600;
+}
+
+.sync-account__info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  line-height: 1.4;
+}
+
+.sync-account__name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-account__email {
+  font-size: 13px;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-badge {
+  flex: 0 0 auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--sage-deep);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page__header-action {
+  position: relative;
+}
+
+.page__header-action.is-synced {
+  color: var(--sage-deep);
+}
+
+.sync-dot {
+  position: absolute;
+  right: 9px;
+  bottom: 11px;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--bg);
+  border-radius: 50%;
+  background: var(--sage);
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.loading-text {
+  padding: 40px 0;
+  text-align: center;
+}
+
 /* ── 빈 상태 ─────────────────────────────── */
 .empty-state {
   display: grid;

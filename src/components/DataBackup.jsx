@@ -1,25 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
-import { applyImport, createBackup, getDataStats, parseBackup, previewImport } from '../storage/backupRepository.js';
+import { useRef, useState } from 'react';
+import { useAsanas } from '../context/AsanaContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import { applyPlan, buildBackup, isEmptyPlan, parseBackup, planImport } from '../storage/backupRepository.js';
 import { todayString } from '../utils/date.js';
+import SyncPanel from './SyncPanel.jsx';
 import { BackIcon } from './Icons.jsx';
 
 const fileName = () => `asana-log-backup-${todayString()}.json`;
 
-/** 백업 화면: 기록·추가한 아사나·사진을 파일로 내보내고, 다른 주소/기기에서 가져온다 */
-export default function DataBackup({ onBack, onImported }) {
-  const [stats, setStats] = useState(null);
-  const [pending, setPending] = useState(null); // { backup, preview, name }
+/**
+ * 동기화 · 백업 화면
+ * - 위: Google 로그인으로 PC·휴대폰 동기화
+ * - 아래: 기록·추가한 아사나·사진을 파일로 내보내고, 백업 파일에서 가져오기
+ */
+export default function DataBackup({ records, onBack, onImported }) {
+  const { status } = useAuth();
+  const { customAsanas, images } = useAsanas();
+  const [pending, setPending] = useState(null); // { backup, plan, name }
   const [message, setMessage] = useState(null); // { type: 'ok' | 'error', text }
   const [busy, setBusy] = useState(false);
   const inputRef = useRef(null);
 
-  const loadStats = () => getDataStats().then(setStats).catch((e) => setMessage({ type: 'error', text: e.message }));
-  useEffect(() => {
-    loadStats();
-  }, []);
+  const current = { records, customAsanas, images };
+  const stats = { records: records.length, customAsanas: customAsanas.length, images: Object.keys(images).length };
 
   const makeFile = async () => {
-    const backup = await createBackup();
+    const backup = buildBackup(current);
     return new File([JSON.stringify(backup)], fileName(), { type: 'application/json' });
   };
 
@@ -62,7 +68,7 @@ export default function DataBackup({ onBack, onImported }) {
     setMessage(null);
     try {
       const backup = parseBackup(await file.text());
-      setPending({ backup, preview: await previewImport(backup), name: file.name });
+      setPending({ backup, plan: planImport(current, backup), name: file.name });
     } catch (err) {
       setPending(null);
       setMessage({ type: 'error', text: err.message });
@@ -72,7 +78,7 @@ export default function DataBackup({ onBack, onImported }) {
   const handleImport = async () => {
     setBusy(true);
     try {
-      const result = await applyImport(pending.backup);
+      const result = await applyPlan(pending.plan);
       const parts = [
         result.records && `기록 ${result.records}개`,
         result.asanas && `아사나 ${result.asanas}개`,
@@ -86,12 +92,11 @@ export default function DataBackup({ onBack, onImported }) {
       setPending(null);
       setBusy(false);
       await onImported();
-      loadStats();
     }
   };
 
-  const p = pending?.preview;
-  const nothingNew = p && p.records.added + p.records.updated + p.asanas.added + p.asanas.updated + p.images === 0;
+  const p = pending?.plan;
+  const nothingNew = p && isEmptyPlan(p);
 
   return (
     <section className="page page--detail">
@@ -101,20 +106,22 @@ export default function DataBackup({ onBack, onImported }) {
         </button>
       </div>
       <header className="page__header">
-        <p className="page__eyebrow">Backup</p>
-        <h1 className="page__title">데이터 백업</h1>
+        <p className="page__eyebrow">Sync &amp; Backup</p>
+        <h1 className="page__title">동기화 · 백업</h1>
         <p className="page__subtitle">
-          기록은 이 브라우저 안에만 저장돼요. 다른 주소나 기기로 옮기거나 백업하려면 파일로 내보내 주세요.
+          {status === 'signedIn'
+            ? '기록이 Google 계정에 저장되고 있어요.'
+            : '지금은 기록이 이 기기의 브라우저 안에만 저장돼요.'}
         </p>
       </header>
 
-      {stats && (
-        <dl className="backup-stats">
-          <div><dt>수련 기록</dt><dd>{stats.records}개</dd></div>
-          <div><dt>내가 추가한 아사나</dt><dd>{stats.customAsanas}개</dd></div>
-          <div><dt>올린 사진</dt><dd>{stats.images}장</dd></div>
-        </dl>
-      )}
+      <SyncPanel />
+
+      <dl className="backup-stats">
+        <div><dt>수련 기록</dt><dd>{stats.records}개</dd></div>
+        <div><dt>내가 추가한 아사나</dt><dd>{stats.customAsanas}개</dd></div>
+        <div><dt>올린 사진</dt><dd>{stats.images}장</dd></div>
+      </dl>
 
       {message && (
         <p className={`notice ${message.type === 'ok' ? 'notice--ok' : 'notice--error'}`} role={message.type === 'ok' ? 'status' : 'alert'}>
@@ -123,8 +130,8 @@ export default function DataBackup({ onBack, onImported }) {
       )}
 
       <section className="detail-section">
-        <h2 className="detail-section__label">내보내기</h2>
-        <p className="muted backup-desc">지금 이 브라우저의 기록, 추가한 아사나, 사진을 백업 파일 하나로 만들어요.</p>
+        <h2 className="detail-section__label">파일로 내보내기</h2>
+        <p className="muted backup-desc">지금 보이는 기록, 추가한 아사나, 사진을 백업 파일 하나로 만들어요. 가끔 저장해 두면 안전해요.</p>
         <div className="backup-actions">
           <button type="button" className="button button--primary" onClick={handleDownload}>파일로 저장</button>
           {canShareFiles && <button type="button" className="button" onClick={handleShare}>공유하기</button>}
@@ -132,7 +139,7 @@ export default function DataBackup({ onBack, onImported }) {
       </section>
 
       <section className="detail-section">
-        <h2 className="detail-section__label">가져오기</h2>
+        <h2 className="detail-section__label">파일에서 가져오기</h2>
         <p className="muted backup-desc">
           백업 파일의 내용을 지금 기록에 합쳐요. 기존 기록은 지워지지 않고, 같은 기록은 더 최근에 수정된 쪽이 남아요.
         </p>
@@ -147,11 +154,11 @@ export default function DataBackup({ onBack, onImported }) {
               <p className="confirm__text">새로 가져올 내용이 없어요. 이미 모두 들어 있어요.</p>
             ) : (
               <ul className="backup-preview">
-                <li>기록: 새로 추가 {p.records.added}개{p.records.updated > 0 && ` · 최신 내용으로 바뀜 ${p.records.updated}개`}</li>
-                {p.asanas.total > 0 && (
-                  <li>추가한 아사나: 새로 추가 {p.asanas.added}개{p.asanas.updated > 0 && ` · 바뀜 ${p.asanas.updated}개`}</li>
+                <li>기록: 새로 추가 {p.records.added.length}개{p.records.updated.length > 0 && ` · 최신 내용으로 바뀜 ${p.records.updated.length}개`}</li>
+                {p.asanas.items.length > 0 && (
+                  <li>추가한 아사나: 새로 추가 {p.asanas.added.length}개{p.asanas.updated.length > 0 && ` · 바뀜 ${p.asanas.updated.length}개`}</li>
                 )}
-                {p.images > 0 && <li>사진: {p.images}장</li>}
+                {p.images.length > 0 && <li>사진: {p.images.length}장</li>}
               </ul>
             )}
             <div className="confirm__actions">

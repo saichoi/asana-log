@@ -35,6 +35,11 @@ npm run dev      # 개발 서버 실행 → 터미널에 표시되는 주소로 
 | `src/hooks/useRecords.js` | 저장소와 화면 상태를 연결하는 React 훅 |
 | `src/utils/markdown.js` | 마크다운 파서(외부 라이브러리 없음), 목록 미리보기용 서식 제거 |
 | `src/components/MarkdownEditor.jsx` | 서식 버튼·미리보기가 있는 마크다운 입력창 |
+| `src/firebase/config.js` | Firebase 연결 설정 (비워 두면 동기화 없이 기기 저장만) |
+| `src/context/AuthContext.jsx` | Google 로그인, 로그인 시 기기 기록을 계정으로 옮기기 |
+| `src/storage/cloudStore.js` | Firestore 읽기·쓰기·실시간 구독 |
+| `src/storage/session.js` | 지금 저장 위치(기기 / 계정) 스위치 |
+| `firestore.rules` | Firestore 보안 규칙 (본인 데이터만 읽고 쓰기) |
 | `src/utils/search.js` | 한국어·영어·산스크리트어 통합 검색 |
 | `src/utils/date.js` | 오늘 날짜, 한국어 날짜 표시 |
 | `src/App.jsx` | 탭 전환, 목록/상세/작성 화면 이동 |
@@ -71,6 +76,17 @@ npm run dev      # 개발 서버 실행 → 터미널에 표시되는 주소로 
 수업 내용·오늘의 도전·오늘의 변화·메모를 마크다운으로 쓸 수 있어요.
 `## 제목`, `**굵게**`, `*기울임*`, `~~취소선~~`, `- 목록`, `1. 번호`, `- [ ] 체크리스트`, `> 인용`, `---`, `[링크](https://...)`를 지원하고,
 입력창의 서식 버튼과 `?` 도움말, 미리보기 탭을 쓸 수 있어요. 목록에서 Enter를 누르면 다음 항목 기호가 자동으로 붙어요.
+
+## PC · 휴대폰 동기화 (Firebase)
+
+기록 목록 오른쪽 위 ☁️ → **Google로 로그인**하면 기록이 Firebase(Firestore)에 저장되고
+로그인한 모든 기기에 실시간으로 반영됩니다. 로그인하지 않으면 지금처럼 이 기기에만 저장됩니다.
+
+- 처음 로그인할 때 그 기기에 있던 기록은 계정으로 합쳐서 옮겨집니다.
+- 오프라인에서 쓴 기록은 인터넷이 연결되면 자동으로 올라갑니다.
+- Firebase 프로젝트: `asana-log-saichoi` (서울 리전, 무료 Spark 플랜)
+- 보안 규칙 변경 후 적용: `firebase deploy --only firestore:rules`
+- 새 주소에서 로그인하려면 Firebase 콘솔 → Authentication → 설정 → 승인된 도메인에 추가해야 합니다.
 
 ## 나중에 서버 DB로 옮기려면
 

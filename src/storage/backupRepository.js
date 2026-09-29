@@ -1,51 +1,39 @@
 /**
- * 백업 내보내기 / 가져오기
+ * 백업 내보내기 / 가져오기 + 로그인 시 기기 기록을 계정으로 옮기기
  * ------------------------------------------------------------
- * 기록은 주소(사이트)마다 브라우저 안에 따로 저장되므로,
- * 다른 주소·다른 기기로 옮길 때는 백업 파일(JSON)을 거쳐야 한다.
- *
  * 백업 파일 형태
  * { app: 'asana-log', version: 1, exportedAt, records, customAsanas, asanaImages }
  *
- * 가져오기는 "합치기" 방식이다. 기존 기록은 지우지 않고,
+ * 가져오기(와 계정으로 옮기기)는 "합치기" 방식이다. 기존 기록은 지우지 않고,
  * 같은 기록(id)이 양쪽에 있으면 더 최근에 수정된 쪽을 남긴다.
+ * 저장은 recordRepository / asanaRepository 를 거치므로
+ * 로그인 상태면 계정(Firestore)에, 아니면 이 기기에 들어간다.
  * ------------------------------------------------------------
  */
-import {
-  loadAsanaImages,
-  loadCustomAsanas,
-  loadRecords,
-  saveAsanaImages,
-  saveCustomAsanas,
-  saveRecords,
-} from './localStorageAdapter.js';
+import { clearLocalData, loadAsanaImages, loadCustomAsanas, loadRecords } from './localStorageAdapter.js';
+import { COLLECTIONS, fetchAll } from './cloudStore.js';
+import { putRecords } from './recordRepository.js';
+import { putAsanaImages, putCustomAsanas } from './asanaRepository.js';
 import { isValidDateString } from '../utils/date.js';
 
 const APP = 'asana-log';
 const VERSION = 1;
 
-export async function createBackup() {
+/** data: { records, customAsanas, images } — 지금 화면에 보이는 데이터 */
+export function buildBackup({ records, customAsanas, images }) {
   return {
     app: APP,
     version: VERSION,
     exportedAt: new Date().toISOString(),
-    records: loadRecords(),
-    customAsanas: loadCustomAsanas(),
-    asanaImages: loadAsanaImages(),
-  };
-}
-
-export async function getDataStats() {
-  return {
-    records: loadRecords().length,
-    customAsanas: loadCustomAsanas().length,
-    images: Object.keys(loadAsanaImages()).length,
+    records,
+    customAsanas,
+    asanaImages: images,
   };
 }
 
 const str = (value) => (typeof value === 'string' ? value : '');
 
-/** 파일 내용이 올바른 기록인지 확인하고, 빠진 항목은 빈 값으로 채운다 */
+/** 올바른 기록인지 확인하고, 빠진 항목은 빈 값으로 채운다 */
 function normalizeRecord(r) {
   if (!r || typeof r !== 'object' || !str(r.id) || !isValidDateString(r.date)) return null;
   return {
@@ -77,7 +65,22 @@ function normalizeAsana(a) {
   };
 }
 
-/** 백업 파일 텍스트 → 검증된 백업 데이터. 형식이 맞지 않으면 Error */
+function normalizeImages(images) {
+  if (!images || typeof images !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(images).filter(([id, url]) => id && typeof url === 'string' && url.startsWith('data:image/')),
+  );
+}
+
+function normalizeData({ records = [], customAsanas = [], images = {} }) {
+  return {
+    records: (Array.isArray(records) ? records : []).map(normalizeRecord).filter(Boolean),
+    customAsanas: (Array.isArray(customAsanas) ? customAsanas : []).map(normalizeAsana).filter(Boolean),
+    images: normalizeImages(images),
+  };
+}
+
+/** 백업 파일 텍스트 → { exportedAt, records, customAsanas, images }. 형식이 맞지 않으면 Error */
 export function parseBackup(text) {
   let data;
   try {
@@ -88,74 +91,65 @@ export function parseBackup(text) {
   if (data?.app !== APP || !Array.isArray(data.records)) {
     throw new Error('Asana Log 백업 파일이 아니에요.');
   }
-  const images = data.asanaImages && typeof data.asanaImages === 'object' ? data.asanaImages : {};
   return {
     exportedAt: str(data.exportedAt),
-    records: data.records.map(normalizeRecord).filter(Boolean),
-    customAsanas: (Array.isArray(data.customAsanas) ? data.customAsanas : []).map(normalizeAsana).filter(Boolean),
-    asanaImages: Object.fromEntries(
-      Object.entries(images).filter(([id, url]) => typeof url === 'string' && url.startsWith('data:image/') && id),
-    ),
+    ...normalizeData({ records: data.records, customAsanas: data.customAsanas, images: data.asanaImages }),
   };
 }
 
-/** id 기준 합치기: 새 항목은 추가, 겹치면 updatedAt 이 더 최근인 쪽 */
-function mergeById(local, incoming) {
-  const merged = [...local];
-  const index = new Map(local.map((item, i) => [item.id, i]));
-  let added = 0;
-  let updated = 0;
+/** 합칠 항목 고르기: 없는 건 추가, 겹치면 updatedAt 이 더 최근인 쪽 */
+function pickNewer(current, incoming) {
+  const byId = new Map(current.map((item) => [item.id, item]));
+  const added = [];
+  const updated = [];
   for (const item of incoming) {
-    if (!index.has(item.id)) {
-      index.set(item.id, merged.length);
-      merged.push(item);
-      added += 1;
-    } else {
-      const i = index.get(item.id);
-      if ((item.updatedAt ?? '') > (merged[i].updatedAt ?? '')) {
-        merged[i] = item;
-        updated += 1;
-      }
-    }
+    const existing = byId.get(item.id);
+    if (!existing) added.push(item);
+    else if ((item.updatedAt ?? '') > (existing.updatedAt ?? '')) updated.push(item);
   }
-  return { merged, added, updated };
+  return { added, updated, items: [...added, ...updated] };
 }
 
-/** 가져오면 어떻게 바뀌는지 미리 계산 (저장하지 않음) */
-export async function previewImport(backup) {
-  const records = mergeById(loadRecords(), backup.records);
-  const asanas = mergeById(loadCustomAsanas(), backup.customAsanas);
-  const localImages = loadAsanaImages();
-  const newImages = Object.keys(backup.asanaImages).filter((id) => !localImages[id]).length;
+/**
+ * current(지금 데이터)에 incoming(가져올 데이터)을 합치면 무엇이 바뀌는지 계산 (저장하지 않음)
+ * 사진은 지금 없는 것만 추가한다.
+ */
+export function planImport(current, incoming) {
   return {
-    records: { added: records.added, updated: records.updated, total: backup.records.length },
-    asanas: { added: asanas.added, updated: asanas.updated, total: backup.customAsanas.length },
-    images: newImages,
+    records: pickNewer(current.records, incoming.records),
+    asanas: pickNewer(current.customAsanas, incoming.customAsanas),
+    images: Object.entries(incoming.images).filter(([id]) => !current.images[id]),
   };
 }
 
-/** 실제로 합쳐서 저장. 사진은 이 기기에 없는 것만 추가한다. */
-export async function applyImport(backup) {
-  const records = mergeById(loadRecords(), backup.records);
-  const asanas = mergeById(loadCustomAsanas(), backup.customAsanas);
-  saveRecords(records.merged);
-  saveCustomAsanas(asanas.merged);
+export const isEmptyPlan = (plan) => plan.records.items.length + plan.asanas.items.length + plan.images.length === 0;
 
+/** 계산한 내용을 실제로 저장 */
+export async function applyPlan(plan) {
+  await putRecords(plan.records.items);
+  await putCustomAsanas(plan.asanas.items);
   // 사진은 용량이 커서 마지막에 저장 (공간이 부족해도 기록은 먼저 옮겨지도록)
-  const images = loadAsanaImages();
-  let imageCount = 0;
-  for (const [id, url] of Object.entries(backup.asanaImages)) {
-    if (!images[id]) {
-      images[id] = url;
-      imageCount += 1;
-    }
+  try {
+    await putAsanaImages(plan.images);
+  } catch {
+    throw new Error('기록과 아사나는 가져왔지만, 저장 공간이 부족해서 사진은 가져오지 못했어요.');
   }
-  if (imageCount > 0) {
-    try {
-      saveAsanaImages(images);
-    } catch {
-      throw new Error('기록과 아사나는 가져왔지만, 저장 공간이 부족해서 사진은 가져오지 못했어요.');
-    }
-  }
-  return { records: records.added + records.updated, asanas: asanas.added + asanas.updated, images: imageCount };
+  return { records: plan.records.items.length, asanas: plan.asanas.items.length, images: plan.images.length };
+}
+
+/**
+ * Google 로그인 직후: 이 기기에 있던 기록을 계정으로 옮긴다.
+ * 서버 저장이 끝난 뒤에만 이 기기의 기록을 비운다. (실패하면 그대로 두고 다음에 다시 시도)
+ */
+export async function migrateLocalToCloud(uid) {
+  const local = normalizeData({ records: loadRecords(), customAsanas: loadCustomAsanas(), images: loadAsanaImages() });
+  const [records, customAsanas, imageDocs] = await Promise.all([
+    fetchAll(uid, COLLECTIONS.records),
+    fetchAll(uid, COLLECTIONS.asanas),
+    fetchAll(uid, COLLECTIONS.images),
+  ]);
+  const cloud = { records, customAsanas, images: Object.fromEntries(imageDocs.map((d) => [d.id, d.dataUrl])) };
+  const result = await applyPlan(planImport(cloud, local));
+  clearLocalData();
+  return result;
 }

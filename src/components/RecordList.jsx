@@ -2,13 +2,16 @@ import { useMemo, useState } from 'react';
 import { currentMonth, formatMonth, shiftMonth } from '../utils/date.js';
 import RecordCard from './RecordCard.jsx';
 import EmptyState from './EmptyState.jsx';
-import { ArchiveIcon, BackIcon, ChevronIcon, LeafIcon, PlusIcon } from './Icons.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import { BackIcon, ChevronIcon, CloudIcon, LeafIcon, PlusIcon } from './Icons.jsx';
 
 /**
  * 기록 목록 — 한 달씩 넘겨 보는 다이어리 방식
  * month('YYYY-MM') 는 App 이 들고 있어서, 상세 화면에 다녀와도 보던 달이 유지된다.
  */
 export default function RecordList({ records, loading, error, month, onMonthChange, onOpen, onWrite, onBackup }) {
+  const { status: authStatus } = useAuth();
+  const synced = authStatus === 'signedIn';
   const [pickerOpen, setPickerOpen] = useState(false);
   const thisMonth = currentMonth();
 
@@ -42,14 +45,23 @@ export default function RecordList({ records, loading, error, month, onMonthChan
           <h1 className="page__title">나의 수련 일지</h1>
           {records.length > 0 && <p className="page__subtitle">지금까지 {records.length}번의 수련을 기록했어요</p>}
         </div>
-        <button type="button" className="icon-button page__header-action" aria-label="데이터 백업" title="데이터 백업" onClick={onBackup}>
-          <ArchiveIcon />
+        <button
+          type="button"
+          className={`icon-button page__header-action${synced ? ' is-synced' : ''}`}
+          aria-label={synced ? '동기화 · 백업 (동기화 켜짐)' : '동기화 · 백업'}
+          title={synced ? '동기화 켜짐' : '동기화 · 백업'}
+          onClick={onBackup}
+        >
+          <CloudIcon />
+          {synced && <span className="sync-dot" aria-hidden="true" />}
         </button>
       </header>
 
       {error && <p className="notice notice--error" role="alert">{error}</p>}
 
-      {loading ? null : records.length === 0 ? (
+      {loading ? (
+        <p className="muted loading-text">기록을 불러오고 있어요…</p>
+      ) : records.length === 0 ? (
         <EmptyState
           icon={<LeafIcon />}
           title="아직 기록이 없어요"
@@ -60,7 +72,7 @@ export default function RecordList({ records, loading, error, month, onMonthChan
                 <PlusIcon width={18} height={18} /> 첫 기록 쓰기
               </button>
               <button type="button" className="button button--ghost" onClick={onBackup}>
-                다른 곳의 기록이 있다면? 백업 파일 가져오기
+                {authStatus === 'signedOut' ? '다른 기기의 기록이 있다면? 로그인 · 백업 가져오기' : '다른 곳의 기록이 있다면? 백업 파일 가져오기'}
               </button>
             </div>
           }

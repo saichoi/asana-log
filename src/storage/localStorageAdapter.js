@@ -62,3 +62,16 @@ export const loadAsanaImages = () => {
   return images && typeof images === 'object' ? images : {};
 };
 export const saveAsanaImages = (images) => write(KEYS.asanaImages, images);
+
+/** 이 기기에 저장된 기록이 있는지 (로그인 시 계정으로 옮길 게 있는지 확인용) */
+export const hasLocalData = () =>
+  loadRecords().length > 0 || loadCustomAsanas().length > 0 || Object.keys(loadAsanaImages()).length > 0;
+
+/** 계정으로 옮긴 뒤 이 기기의 기록 비우기 */
+export function clearLocalData() {
+  try {
+    Object.values(KEYS).forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    /* 저장소 접근 불가 시 무시 */
+  }
+}

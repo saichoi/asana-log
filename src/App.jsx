@@ -169,6 +169,7 @@ export default function App() {
   } else if (route.view === 'backup') {
     screen = (
       <DataBackup
+        records={records}
         onBack={() => back(HOME)}
         onImported={async () => {
           await Promise.all([reload(), reloadAsanas()]);

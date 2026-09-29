@@ -47,3 +47,6 @@ export const GripIcon = (p) => (
 export const ArchiveIcon = (p) => (
   <svg {...base} {...p}><path d="M4 7.5h16v11A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" /><path d="M3 4h18v3.5H3z" /><path d="M12 11v5.5M9.5 14l2.5 2.5 2.5-2.5" /></svg>
 );
+export const CloudIcon = (p) => (
+  <svg {...base} {...p}><path d="M7 18.5h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 9.3 4.6 4.6 0 0 0 7 18.5z" /></svg>
+);
