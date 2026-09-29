@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Asana Log 앱 아이콘 원본. 아이콘을 바꾸려면 이 파일을 고친 뒤 PNG를 다시 만드세요. -->
+  <rect width="512" height="512" fill="#FAF6EE"/>
+  <circle cx="256" cy="262" r="168" fill="#EEF2E8"/>
+  <path d="M150 232 C 158 302, 200 342, 250 348 C 236 292, 202 250, 150 232 Z" fill="#AEBBA1"/>
+  <path d="M362 232 C 354 302, 312 342, 262 348 C 276 292, 310 250, 362 232 Z" fill="#AEBBA1"/>
+  <path d="M256 134 C 204 202, 204 276, 256 336 C 308 276, 308 202, 256 134 Z" fill="#8A9A7B"/>
+  <path d="M172 386 H340" stroke="#66775A" stroke-width="14" stroke-linecap="round"/>
+</svg>
