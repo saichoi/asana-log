@@ -44,3 +44,6 @@ export const CameraIcon = (p) => (
 export const GripIcon = (p) => (
   <svg {...base} fill="currentColor" stroke="none" {...p}><circle cx="9" cy="6" r="1.8" /><circle cx="15" cy="6" r="1.8" /><circle cx="9" cy="12" r="1.8" /><circle cx="15" cy="12" r="1.8" /><circle cx="9" cy="18" r="1.8" /><circle cx="15" cy="18" r="1.8" /></svg>
 );
+export const ArchiveIcon = (p) => (
+  <svg {...base} {...p}><path d="M4 7.5h16v11A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5z" /><path d="M3 4h18v3.5H3z" /><path d="M12 11v5.5M9.5 14l2.5 2.5 2.5-2.5" /></svg>
+);

@@ -13,16 +13,19 @@ export function AsanaProvider({ children }) {
   const [images, setImages] = useState({});
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setCustomAsanas(await repository.listCustomAsanas());
-        setImages(await repository.listAsanaImages());
-      } catch (e) {
-        setError(e.message);
-      }
-    })();
+  const reload = useCallback(async () => {
+    try {
+      setCustomAsanas(await repository.listCustomAsanas());
+      setImages(await repository.listAsanaImages());
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
   }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const asanas = useMemo(() => [...ASANAS, ...customAsanas], [customAsanas]);
   const byId = useMemo(() => new Map(asanas.map((asana) => [asana.id, asana])), [asanas]);
@@ -51,8 +54,8 @@ export function AsanaProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ asanas, getAsana, images, error, addAsana, updateAsana, removeAsana, setImage }),
-    [asanas, getAsana, images, error, addAsana, updateAsana, removeAsana, setImage],
+    () => ({ asanas, getAsana, images, error, addAsana, updateAsana, removeAsana, setImage, reload }),
+    [asanas, getAsana, images, error, addAsana, updateAsana, removeAsana, setImage, reload],
   );
 
   return <AsanaContext.Provider value={value}>{children}</AsanaContext.Provider>;

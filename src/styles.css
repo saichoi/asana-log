@@ -565,6 +565,11 @@ ul {
   margin-bottom: 20px;
 }
 
+.notice--ok {
+  background: var(--sage-tint);
+  color: var(--sage-deep);
+}
+
 .notice--error {
   background: var(--danger-soft);
   color: var(--danger);
@@ -1178,6 +1183,64 @@ ul {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+/* ── 데이터 백업 ─────────────────────────────── */
+.page__header-action {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: -6px -10px 0 0;
+}
+
+.backup-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 24px;
+}
+
+.backup-stats div {
+  display: grid;
+  gap: 2px;
+  padding: 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: center;
+}
+
+.backup-stats dt {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.backup-stats dd {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--sage-deep);
+}
+
+.backup-desc {
+  margin-bottom: 14px;
+}
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.confirm--neutral {
+  background: var(--sage-tint);
+}
+
+.backup-preview {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 14px;
 }
 
 /* ── 빈 상태 ─────────────────────────────── */

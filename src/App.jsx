@@ -10,6 +10,7 @@ import RecordForm from './components/RecordForm.jsx';
 import AsanaDictionary from './components/AsanaDictionary.jsx';
 import AsanaDetail from './components/AsanaDetail.jsx';
 import AsanaForm from './components/AsanaForm.jsx';
+import DataBackup from './components/DataBackup.jsx';
 
 const LEAVE_MESSAGE = '작성 중인 내용이 저장되지 않았어요. 이동할까요?';
 
@@ -20,13 +21,14 @@ const LEAVE_MESSAGE = '작성 중인 내용이 저장되지 않았어요. 이동
  * - editingId: 작성 탭에서 수정 중인 기록
  * - asanaId:   사전 탭에서 보고 있는 아사나
  * - asanaForm: 사전 탭의 아사나 폼 ('new' 또는 수정할 아사나 id)
+ * - view:      'backup' 이면 기록 탭에서 데이터 백업 화면
  * - from:      뒤로 가기를 눌렀을 때 돌아갈 화면
  */
 const HOME = { tab: 'list' };
 
 export default function App() {
-  const { records, loading, error, create, update, remove } = useRecords();
-  const { removeAsana } = useAsanas();
+  const { records, loading, error, create, update, remove, reload } = useRecords();
+  const { removeAsana, reload: reloadAsanas } = useAsanas();
 
   const [route, setRoute] = useState(HOME);
   const [listMonth, setListMonth] = useState(currentMonth); // 기록 목록에서 보고 있는 달
@@ -164,6 +166,15 @@ export default function App() {
         />
       );
     }
+  } else if (route.view === 'backup') {
+    screen = (
+      <DataBackup
+        onBack={() => back(HOME)}
+        onImported={async () => {
+          await Promise.all([reload(), reloadAsanas()]);
+        }}
+      />
+    );
   } else if (route.detailId) {
     screen = (
       <RecordDetail
@@ -188,6 +199,7 @@ export default function App() {
         }}
         onOpen={openRecord}
         onWrite={() => go({ tab: 'write' })}
+        onBackup={() => go({ tab: 'list', view: 'backup', from: route })}
       />
     );
   }

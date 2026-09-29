@@ -44,5 +44,5 @@ export function useRecords() {
     await refresh();
   }, [refresh]);
 
-  return { records, loading, error, create, update, remove };
+  return { records, loading, error, create, update, remove, reload: refresh };
 }
