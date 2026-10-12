@@ -1,17 +1,14 @@
 /**
- * 백업 내보내기 / 가져오기 + 로그인 시 기기 기록을 계정으로 옮기기
+ * 백업 내보내기 / 가져오기
  * ------------------------------------------------------------
  * 백업 파일 형태
  * { app: 'asana-log', version: 1, exportedAt, records, customAsanas, asanaImages }
  *
- * 가져오기(와 계정으로 옮기기)는 "합치기" 방식이다. 기존 기록은 지우지 않고,
+ * 가져오기는 "합치기" 방식이다. 기존 기록은 지우지 않고,
  * 같은 기록(id)이 양쪽에 있으면 더 최근에 수정된 쪽을 남긴다.
- * 저장은 recordRepository / asanaRepository 를 거치므로
- * 로그인 상태면 계정(Firestore)에, 아니면 이 기기에 들어간다.
+ * (Google Drive 동기화 파일도 같은 형태라서 백업 파일처럼 가져올 수 있다)
  * ------------------------------------------------------------
  */
-import { clearLocalData, loadAsanaImages, loadCustomAsanas, loadRecords } from './localStorageAdapter.js';
-import { COLLECTIONS, fetchAll } from './cloudStore.js';
 import { putRecords } from './recordRepository.js';
 import { putAsanaImages, putCustomAsanas } from './asanaRepository.js';
 import { isValidDateString } from '../utils/date.js';
@@ -72,7 +69,7 @@ function normalizeImages(images) {
   );
 }
 
-function normalizeData({ records = [], customAsanas = [], images = {} }) {
+export function normalizeData({ records = [], customAsanas = [], images = {} }) {
   return {
     records: (Array.isArray(records) ? records : []).map(normalizeRecord).filter(Boolean),
     customAsanas: (Array.isArray(customAsanas) ? customAsanas : []).map(normalizeAsana).filter(Boolean),
@@ -135,21 +132,4 @@ export async function applyPlan(plan) {
     throw new Error('기록과 아사나는 가져왔지만, 저장 공간이 부족해서 사진은 가져오지 못했어요.');
   }
   return { records: plan.records.items.length, asanas: plan.asanas.items.length, images: plan.images.length };
-}
-
-/**
- * Google 로그인 직후: 이 기기에 있던 기록을 계정으로 옮긴다.
- * 서버 저장이 끝난 뒤에만 이 기기의 기록을 비운다. (실패하면 그대로 두고 다음에 다시 시도)
- */
-export async function migrateLocalToCloud(uid) {
-  const local = normalizeData({ records: loadRecords(), customAsanas: loadCustomAsanas(), images: loadAsanaImages() });
-  const [records, customAsanas, imageDocs] = await Promise.all([
-    fetchAll(uid, COLLECTIONS.records),
-    fetchAll(uid, COLLECTIONS.asanas),
-    fetchAll(uid, COLLECTIONS.images),
-  ]);
-  const cloud = { records, customAsanas, images: Object.fromEntries(imageDocs.map((d) => [d.id, d.dataUrl])) };
-  const result = await applyPlan(planImport(cloud, local));
-  clearLocalData();
-  return result;
 }

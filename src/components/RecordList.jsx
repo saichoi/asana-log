@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { currentMonth, formatMonth, shiftMonth } from '../utils/date.js';
 import RecordCard from './RecordCard.jsx';
 import EmptyState from './EmptyState.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
+import { isSyncOn, useSync } from '../hooks/useSync.js';
 import { BackIcon, ChevronIcon, CloudIcon, LeafIcon, PlusIcon } from './Icons.jsx';
 
 /**
@@ -10,8 +10,9 @@ import { BackIcon, ChevronIcon, CloudIcon, LeafIcon, PlusIcon } from './Icons.js
  * month('YYYY-MM') 는 App 이 들고 있어서, 상세 화면에 다녀와도 보던 달이 유지된다.
  */
 export default function RecordList({ records, loading, error, month, onMonthChange, onOpen, onWrite, onBackup }) {
-  const { status: authStatus } = useAuth();
-  const synced = authStatus === 'signedIn';
+  const sync = useSync();
+  const synced = isSyncOn(sync.status);
+  const needsAttention = sync.status === 'needsAuth' || sync.status === 'error';
   const [pickerOpen, setPickerOpen] = useState(false);
   const thisMonth = currentMonth();
 
@@ -48,14 +49,21 @@ export default function RecordList({ records, loading, error, month, onMonthChan
         <button
           type="button"
           className={`icon-button page__header-action${synced ? ' is-synced' : ''}`}
-          aria-label={synced ? '동기화 · 백업 (동기화 켜짐)' : '동기화 · 백업'}
-          title={synced ? '동기화 켜짐' : '동기화 · 백업'}
+          aria-label={needsAttention ? '동기화 · 백업 (확인 필요)' : synced ? '동기화 · 백업 (동기화 켜짐)' : '동기화 · 백업'}
+          title={needsAttention ? '동기화 확인 필요' : synced ? '동기화 켜짐' : '동기화 · 백업'}
           onClick={onBackup}
         >
           <CloudIcon />
-          {synced && <span className="sync-dot" aria-hidden="true" />}
+          {synced && <span className={`sync-dot${needsAttention ? ' sync-dot--warn' : ''}`} aria-hidden="true" />}
         </button>
       </header>
+
+      {sync.status === 'needsAuth' && (
+        <p className="notice notice--ok" role="status">
+          Google Drive 연결이 만료됐어요. 기록은 이 기기에 저장되고 있어요.{' '}
+          <button type="button" className="link-button" onClick={() => sync.connect()}>다시 연결</button>
+        </p>
+      )}
 
       {error && <p className="notice notice--error" role="alert">{error}</p>}
 
@@ -72,7 +80,7 @@ export default function RecordList({ records, loading, error, month, onMonthChan
                 <PlusIcon width={18} height={18} /> 첫 기록 쓰기
               </button>
               <button type="button" className="button button--ghost" onClick={onBackup}>
-                {authStatus === 'signedOut' ? '다른 기기의 기록이 있다면? 로그인 · 백업 가져오기' : '다른 곳의 기록이 있다면? 백업 파일 가져오기'}
+                {sync.status === 'off' ? '다른 기기의 기록이 있다면? 동기화 · 백업 가져오기' : '다른 곳의 기록이 있다면? 백업 파일 가져오기'}
               </button>
             </div>
           }

@@ -6,6 +6,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/asana-log/' : '/',
   plugins: [react()],
-  // Firebase SDK 가 포함되어 번들이 커지므로 경고 기준만 조금 올린다.
+  // 예전 기록 옮기기용 Firebase SDK 조각(필요할 때만 로드)이 커서 경고 기준만 조금 올린다.
   build: { chunkSizeWarningLimit: 1000 },
 }));

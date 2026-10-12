@@ -8,6 +8,9 @@ export const KEYS = {
   records: 'asana-log:records',
   customAsanas: 'asana-log:custom-asanas',
   asanaImages: 'asana-log:asana-images',
+  syncMeta: 'asana-log:sync-meta',
+  syncState: 'asana-log:sync-state',
+  legacyChecked: 'asana-log:legacy-checked',
 };
 
 export class StorageError extends Error {}
@@ -63,15 +66,32 @@ export const loadAsanaImages = () => {
 };
 export const saveAsanaImages = (images) => write(KEYS.asanaImages, images);
 
-/** 이 기기에 저장된 기록이 있는지 (로그인 시 계정으로 옮길 게 있는지 확인용) */
-export const hasLocalData = () =>
-  loadRecords().length > 0 || loadCustomAsanas().length > 0 || Object.keys(loadAsanaImages()).length > 0;
+/**
+ * 동기화할 때 필요한 부가 정보 (기록과 함께 Drive 파일에도 들어간다)
+ * - imageTimes: { [asanaId]: 사진을 올린 시각 }
+ * - deleted:    지운 항목의 { [id]: 지운 시각 } — 다른 기기에서도 지워지도록 남겨 두는 표시
+ */
+export const loadSyncMeta = () => {
+  const meta = read(KEYS.syncMeta, null);
+  const map = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+  return {
+    imageTimes: map(meta?.imageTimes),
+    deleted: {
+      records: map(meta?.deleted?.records),
+      customAsanas: map(meta?.deleted?.customAsanas),
+      images: map(meta?.deleted?.images),
+    },
+  };
+};
+export const saveSyncMeta = (meta) => write(KEYS.syncMeta, meta);
 
-/** 계정으로 옮긴 뒤 이 기기의 기록 비우기 */
-export function clearLocalData() {
-  try {
-    Object.values(KEYS).forEach((key) => window.localStorage.removeItem(key));
-  } catch {
-    /* 저장소 접근 불가 시 무시 */
-  }
-}
+/** Google Drive 연결 상태 (이 기기에만 저장, 동기화 대상 아님) */
+export const loadSyncState = () => {
+  const state = read(KEYS.syncState, null);
+  return state && typeof state === 'object' ? state : {};
+};
+export const saveSyncState = (state) => write(KEYS.syncState, state);
+
+/** 예전 Firebase 계정의 기록을 이 기기로 옮겼는지 한 번만 확인하기 위한 표시 */
+export const isLegacyChecked = () => read(KEYS.legacyChecked, false) === true;
+export const setLegacyChecked = () => write(KEYS.legacyChecked, true);

@@ -1,18 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ASANAS } from '../data/asanas.js';
 import * as repository from '../storage/asanaRepository.js';
-import { COLLECTIONS, subscribe } from '../storage/cloudStore.js';
-import { useAuth } from './AuthContext.jsx';
+import { onDataChange } from '../storage/changes.js';
 
 const AsanaContext = createContext(null);
 
 /**
  * 기본 아사나(코드) + 내가 추가한 아사나 + 올린 사진을 합쳐서
  * 앱 어디서나 useAsanas() 로 꺼내 쓸 수 있게 한다.
- * 로그인 상태면 Firestore 를 실시간 구독하고, 아니면 이 기기에서 읽는다.
+ * (Google Drive 동기화가 다른 기기의 내용을 받아 오면 자동으로 다시 읽는다)
  */
 export function AsanaProvider({ children }) {
-  const { status, uid } = useAuth();
   const [customAsanas, setCustomAsanas] = useState([]);
   const [images, setImages] = useState({});
   const [error, setError] = useState('');
@@ -28,25 +26,13 @@ export function AsanaProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (status === 'loading') return undefined;
-    if (uid) {
-      const offAsanas = subscribe(uid, COLLECTIONS.asanas, setCustomAsanas);
-      const offImages = subscribe(uid, COLLECTIONS.images, (docs) =>
-        setImages(Object.fromEntries(docs.map((d) => [d.id, d.dataUrl]))),
-      );
-      return () => {
-        offAsanas();
-        offImages();
-      };
-    }
     loadLocal();
-    return undefined;
-  }, [status, uid, loadLocal]);
+    return onDataChange((source) => {
+      if (source === 'sync') loadLocal();
+    });
+  }, [loadLocal]);
 
-  // 로그인 상태에서는 구독이 자동으로 갱신한다.
-  const reload = useCallback(async () => {
-    if (!uid) await loadLocal();
-  }, [uid, loadLocal]);
+  const reload = loadLocal;
 
   const asanas = useMemo(() => [...ASANAS, ...customAsanas], [customAsanas]);
   const byId = useMemo(() => new Map(asanas.map((asana) => [asana.id, asana])), [asanas]);

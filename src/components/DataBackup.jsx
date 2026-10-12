@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useAsanas } from '../context/AsanaContext.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
+import { isSyncOn, useSync } from '../hooks/useSync.js';
 import { applyPlan, buildBackup, isEmptyPlan, parseBackup, planImport } from '../storage/backupRepository.js';
+import { canImportLegacy, importLegacyAccount } from '../storage/legacyMigration.js';
 import { todayString } from '../utils/date.js';
 import SyncPanel from './SyncPanel.jsx';
 import { BackIcon } from './Icons.jsx';
@@ -10,11 +11,12 @@ const fileName = () => `asana-log-backup-${todayString()}.json`;
 
 /**
  * 동기화 · 백업 화면
- * - 위: Google 로그인으로 PC·휴대폰 동기화
+ * - 위: Google Drive 로 PC·휴대폰 동기화
  * - 아래: 기록·추가한 아사나·사진을 파일로 내보내고, 백업 파일에서 가져오기
+ * - 맨 아래: 예전 방식(Firebase 계정)으로 동기화하던 기록 가져오기
  */
 export default function DataBackup({ records, onBack, onImported }) {
-  const { status } = useAuth();
+  const { status } = useSync();
   const { customAsanas, images } = useAsanas();
   const [pending, setPending] = useState(null); // { backup, plan, name }
   const [message, setMessage] = useState(null); // { type: 'ok' | 'error', text }
@@ -75,21 +77,39 @@ export default function DataBackup({ records, onBack, onImported }) {
     }
   };
 
+  const describe = (result) =>
+    [
+      result.records && `기록 ${result.records}개`,
+      result.asanas && `아사나 ${result.asanas}개`,
+      result.images && `사진 ${result.images}장`,
+    ].filter(Boolean);
+
   const handleImport = async () => {
     setBusy(true);
     try {
       const result = await applyPlan(pending.plan);
-      const parts = [
-        result.records && `기록 ${result.records}개`,
-        result.asanas && `아사나 ${result.asanas}개`,
-        result.images && `사진 ${result.images}장`,
-      ].filter(Boolean);
+      const parts = describe(result);
       setMessage({ type: 'ok', text: parts.length ? `${parts.join(', ')}를 가져왔어요.` : '새로 가져올 내용이 없었어요. 이미 모두 들어 있어요.' });
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
     } finally {
       // 일부만 저장된 경우도 있으므로 항상 화면을 새로 고친다.
       setPending(null);
+      setBusy(false);
+      await onImported();
+    }
+  };
+
+  const handleLegacyImport = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const parts = describe(await importLegacyAccount({ interactive: true }));
+      setMessage({ type: 'ok', text: parts.length ? `예전 계정에서 ${parts.join(', ')}를 가져왔어요.` : '예전 계정에 새로 가져올 내용이 없었어요.' });
+    } catch (err) {
+      const cancelled = err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request';
+      if (!cancelled) setMessage({ type: 'error', text: `예전 계정에서 가져오지 못했어요. (${err.code ?? err.message})` });
+    } finally {
       setBusy(false);
       await onImported();
     }
@@ -109,8 +129,8 @@ export default function DataBackup({ records, onBack, onImported }) {
         <p className="page__eyebrow">Sync &amp; Backup</p>
         <h1 className="page__title">동기화 · 백업</h1>
         <p className="page__subtitle">
-          {status === 'signedIn'
-            ? '기록이 Google 계정에 저장되고 있어요.'
+          {isSyncOn(status)
+            ? '기록은 이 기기에 저장되고, 내 Google Drive와 동기화돼요.'
             : '지금은 기록이 이 기기의 브라우저 안에만 저장돼요.'}
         </p>
       </header>
@@ -175,6 +195,16 @@ export default function DataBackup({ records, onBack, onImported }) {
         )}
         <input ref={inputRef} type="file" accept=".json,application/json" hidden onChange={handleFile} />
       </section>
+
+      {canImportLegacy && (
+        <section className="detail-section">
+          <h2 className="detail-section__label">예전 동기화에서 가져오기</h2>
+          <p className="muted backup-desc">
+            이전 버전에서 Google 로그인으로 동기화하던 기록이 있다면, 그 계정에 남아 있는 기록을 이 기기로 가져와요.
+          </p>
+          <button type="button" className="button" disabled={busy} onClick={handleLegacyImport}>예전 계정에서 가져오기</button>
+        </section>
+      )}
     </section>
   );
 }

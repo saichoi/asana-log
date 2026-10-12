@@ -1329,6 +1329,20 @@ ul {
   color: var(--sage-deep);
 }
 
+.sync-badge--warn {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.sync-panel__actions {
+  margin-top: 2px;
+}
+
+.sync-panel code {
+  font-size: 0.92em;
+  word-break: break-all;
+}
+
 .sync-dot {
   position: absolute;
   right: 9px;
@@ -1338,6 +1352,10 @@ ul {
   border: 1.5px solid var(--bg);
   border-radius: 50%;
   background: var(--sage);
+}
+
+.sync-dot--warn {
+  background: var(--danger);
 }
 
 .link-button {

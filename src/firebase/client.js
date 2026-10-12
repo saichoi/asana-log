@@ -7,8 +7,8 @@ let instance = null;
 
 /**
  * Firebase 앱·인증·Firestore 를 한 번만 만들어서 돌려준다. 설정이 없으면 null.
- * Firestore 는 기기에 캐시를 두어 오프라인에서도 읽고 쓸 수 있고,
- * 인터넷이 연결되면 자동으로 서버와 맞춘다.
+ * Firestore 는 예전 버전과 같은 기기 캐시 설정으로 열어서,
+ * 오프라인에서 써 두고 아직 서버에 올라가지 않은 기록까지 읽어 올 수 있게 한다.
  */
 export function getFirebase() {
   if (!isFirebaseConfigured) return null;

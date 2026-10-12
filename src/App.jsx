@@ -3,6 +3,8 @@ import { useRecords } from './hooks/useRecords.js';
 import { useAsanas } from './context/AsanaContext.jsx';
 import { createEmptyDraft, recentLessons } from './models/record.js';
 import { currentMonth } from './utils/date.js';
+import { getAuthReturnTo } from './sync/syncEngine.js';
+import { migrateLegacyOnce } from './storage/legacyMigration.js';
 import BottomNav from './components/BottomNav.jsx';
 import RecordList from './components/RecordList.jsx';
 import RecordDetail from './components/RecordDetail.jsx';
@@ -21,16 +23,18 @@ const LEAVE_MESSAGE = '작성 중인 내용이 저장되지 않았어요. 이동
  * - editingId: 작성 탭에서 수정 중인 기록
  * - asanaId:   사전 탭에서 보고 있는 아사나
  * - asanaForm: 사전 탭의 아사나 폼 ('new' 또는 수정할 아사나 id)
- * - view:      'backup' 이면 기록 탭에서 데이터 백업 화면
+ * - view:      'backup' 이면 기록 탭에서 동기화 · 백업 화면
  * - from:      뒤로 가기를 눌렀을 때 돌아갈 화면
  */
 const HOME = { tab: 'list' };
+const BACKUP = { tab: 'list', view: 'backup' };
 
 export default function App() {
   const { records, loading, error, create, update, remove, reload } = useRecords();
   const { removeAsana, reload: reloadAsanas } = useAsanas();
 
-  const [route, setRoute] = useState(HOME);
+  // Google Drive 연결을 하고 돌아왔으면 떠나기 전에 보던 화면으로
+  const [route, setRoute] = useState(() => (getAuthReturnTo() === 'backup' ? BACKUP : HOME));
   const [listMonth, setListMonth] = useState(currentMonth); // 기록 목록에서 보고 있는 달
   const [formNonce, setFormNonce] = useState(0); // 새 기록 폼을 초기화할 때 증가
   const [toast, setToast] = useState('');
@@ -48,6 +52,17 @@ export default function App() {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
+
+  // 예전 방식(Firebase 계정)으로 동기화하던 기기라면 계정의 기록을 한 번 이 기기로 내려받는다.
+  useEffect(() => {
+    migrateLegacyOnce()
+      .then(async (result) => {
+        if (!result) return;
+        await Promise.all([reload(), reloadAsanas()]);
+        if (result.records + result.asanas + result.images > 0) setToast('예전 계정의 기록을 이 기기로 옮겼어요');
+      })
+      .catch((e) => console.error('[legacy]', e));
+  }, [reload, reloadAsanas]);
 
   useEffect(() => {
     if (!toast) return;
@@ -200,7 +215,7 @@ export default function App() {
         }}
         onOpen={openRecord}
         onWrite={() => go({ tab: 'write' })}
-        onBackup={() => go({ tab: 'list', view: 'backup', from: route })}
+        onBackup={() => go({ ...BACKUP, from: route })}
       />
     );
   }
