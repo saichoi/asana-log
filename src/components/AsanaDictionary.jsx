@@ -10,7 +10,11 @@ import { LeafIcon, PlusIcon } from './Icons.jsx';
 export default function AsanaDictionary({ onOpen, onAdd }) {
   const { asanas, error } = useAsanas();
   const [query, setQuery] = useState('');
-  const results = useMemo(() => searchAsanas(asanas, query), [asanas, query]);
+  const [onlyMine, setOnlyMine] = useState(false); // 내가 추가한 자세만 보기
+  const results = useMemo(
+    () => searchAsanas(onlyMine ? asanas.filter((a) => a.isCustom) : asanas, query),
+    [asanas, query, onlyMine],
+  );
 
   // 검색어가 없을 때는 카테고리별로 묶어서 보여 준다.
   const groups = useMemo(() => {
@@ -41,9 +45,28 @@ export default function AsanaDictionary({ onOpen, onAdd }) {
 
       <div className="sticky-search">
         <SearchInput value={query} onChange={setQuery} />
+        <div className="chip-group dictionary-filter" role="group" aria-label="보기">
+          <button type="button" className={`chip chip--small${onlyMine ? '' : ' is-active'}`} aria-pressed={!onlyMine} onClick={() => setOnlyMine(false)}>
+            전체 <span className="chip__count">{asanas.length}</span>
+          </button>
+          <button type="button" className={`chip chip--small${onlyMine ? ' is-active' : ''}`} aria-pressed={onlyMine} onClick={() => setOnlyMine(true)}>
+            내가 추가한 자세 <span className="chip__count">{customCount}</span>
+          </button>
+        </div>
       </div>
 
-      {results.length === 0 ? (
+      {onlyMine && customCount === 0 ? (
+        <EmptyState
+          icon={<LeafIcon />}
+          title="아직 추가한 자세가 없어요"
+          description="사전에 없는 자세는 직접 추가해서 기록에 쓸 수 있어요."
+          action={
+            <button type="button" className="button button--primary" onClick={onAdd}>
+              <PlusIcon width={18} height={18} /> 새 자세 추가
+            </button>
+          }
+        />
+      ) : results.length === 0 ? (
         <EmptyState
           icon={<LeafIcon />}
           title="찾는 자세가 없어요"

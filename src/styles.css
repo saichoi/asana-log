@@ -1648,6 +1648,11 @@ ul {
   color: #fff;
 }
 
+.dictionary-filter {
+  margin-top: 10px;
+  gap: 6px;
+}
+
 .chip-group--suggest {
   margin-top: 10px;
   gap: 6px;
