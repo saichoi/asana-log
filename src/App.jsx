@@ -3,7 +3,7 @@ import { useRecords } from './hooks/useRecords.js';
 import { useAsanas } from './context/AsanaContext.jsx';
 import { createEmptyDraft, recentLessons } from './models/record.js';
 import { currentMonth } from './utils/date.js';
-import { getAuthReturnTo } from './sync/syncEngine.js';
+import { getAuthReturnTo, setLeaveGuard } from './sync/syncEngine.js';
 import BottomNav from './components/BottomNav.jsx';
 import RecordList from './components/RecordList.jsx';
 import RecordDetail from './components/RecordDetail.jsx';
@@ -41,6 +41,12 @@ export default function App() {
 
   const handleDirtyChange = useCallback((dirty) => {
     dirtyRef.current = dirty;
+  }, []);
+
+  // 작성 중일 때는 동기화가 연결을 되살리러 페이지를 떠나지 않게 한다.
+  useEffect(() => {
+    setLeaveGuard(() => !dirtyRef.current);
+    return () => setLeaveGuard(() => true);
   }, []);
 
   // 작성 중에 새로고침하거나 창을 닫으려 하면 브라우저 확인창 띄우기
