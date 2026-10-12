@@ -10,7 +10,6 @@ export const KEYS = {
   asanaImages: 'asana-log:asana-images',
   syncMeta: 'asana-log:sync-meta',
   syncState: 'asana-log:sync-state',
-  legacyChecked: 'asana-log:legacy-checked',
 };
 
 export class StorageError extends Error {}
@@ -91,7 +90,3 @@ export const loadSyncState = () => {
   return state && typeof state === 'object' ? state : {};
 };
 export const saveSyncState = (state) => write(KEYS.syncState, state);
-
-/** 예전 Firebase 계정의 기록을 이 기기로 옮겼는지 한 번만 확인하기 위한 표시 */
-export const isLegacyChecked = () => read(KEYS.legacyChecked, false) === true;
-export const setLegacyChecked = () => write(KEYS.legacyChecked, true);

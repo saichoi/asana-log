@@ -4,7 +4,6 @@ import { useAsanas } from './context/AsanaContext.jsx';
 import { createEmptyDraft, recentLessons } from './models/record.js';
 import { currentMonth } from './utils/date.js';
 import { getAuthReturnTo } from './sync/syncEngine.js';
-import { migrateLegacyOnce } from './storage/legacyMigration.js';
 import BottomNav from './components/BottomNav.jsx';
 import RecordList from './components/RecordList.jsx';
 import RecordDetail from './components/RecordDetail.jsx';
@@ -52,17 +51,6 @@ export default function App() {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
-
-  // 예전 방식(Firebase 계정)으로 동기화하던 기기라면 계정의 기록을 한 번 이 기기로 내려받는다.
-  useEffect(() => {
-    migrateLegacyOnce()
-      .then(async (result) => {
-        if (!result) return;
-        await Promise.all([reload(), reloadAsanas()]);
-        if (result.records + result.asanas + result.images > 0) setToast('예전 계정의 기록을 이 기기로 옮겼어요');
-      })
-      .catch((e) => console.error('[legacy]', e));
-  }, [reload, reloadAsanas]);
 
   useEffect(() => {
     if (!toast) return;

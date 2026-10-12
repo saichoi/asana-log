@@ -69,7 +69,7 @@ function normalizeImages(images) {
   );
 }
 
-export function normalizeData({ records = [], customAsanas = [], images = {} }) {
+function normalizeData({ records = [], customAsanas = [], images = {} }) {
   return {
     records: (Array.isArray(records) ? records : []).map(normalizeRecord).filter(Boolean),
     customAsanas: (Array.isArray(customAsanas) ? customAsanas : []).map(normalizeAsana).filter(Boolean),

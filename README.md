@@ -42,7 +42,6 @@ npm run dev      # 개발 서버 실행 → 터미널에 표시되는 주소로 
 | `src/sync/syncData.js` | 동기화 파일 형태와 합치기 규칙 |
 | `src/sync/googleAuth.js` · `driveFile.js` | Google 계정 연결, Drive 파일 읽기·쓰기 |
 | `src/hooks/useSync.js` | 화면에서 동기화 상태를 읽는 React 훅 |
-| `src/firebase/` · `src/storage/legacyMigration.js` | 예전 방식(Firebase 계정)의 기록을 이 기기로 옮기기 전용 |
 | `src/utils/search.js` | 한국어·영어·산스크리트어 통합 검색 |
 | `src/utils/date.js` | 오늘 날짜, 한국어 날짜 표시 |
 | `src/App.jsx` | 탭 전환, 목록/상세/작성 화면 이동 |
@@ -112,15 +111,6 @@ npm run dev      # 개발 서버 실행 → 터미널에 표시되는 주소로 
    - 대상 → 게시 상태가 "테스트"라면 테스트 사용자에 내 Google 계정 추가
 
 > `npm run dev`가 보여 주는 `Network:` 주소(192.168.x.x)는 Google이 리디렉션 주소로 허용하지 않아서, 그 주소에서는 Drive 연결이 되지 않습니다. 휴대폰에서는 배포 주소로 접속해 연결하세요.
-
-### 예전 방식(Firebase 계정)에서 옮기기
-
-이전 버전은 Google 로그인 후 기록을 Firebase(Firestore)에 저장했습니다. 지금은 쓰지 않습니다.
-
-- 예전 방식으로 로그인되어 있던 기기는 새 버전을 처음 열 때 계정의 기록을 **자동으로 이 기기에 내려받습니다.**
-- 그 밖의 기기는 ☁️ → **예전 계정에서 가져오기**로 가져올 수 있어요.
-- Firestore에 있던 기록은 지워지지 않고 그대로 남습니다(프로젝트 `asana-log-saichoi`). 필요 없어지면 Firebase 콘솔에서 지우세요.
-- 모든 기기에서 옮긴 뒤에는 `src/firebase/`, `src/storage/legacyMigration.js`, `firebase` 패키지, `firebase.json`·`firestore.rules`·`.firebaserc`를 지워도 됩니다.
 
 ## 나중에 서버 DB로 옮기려면
 
