@@ -1027,6 +1027,10 @@ ul {
   gap: 8px;
 }
 
+.asana-list__toggle {
+  margin-top: 6px;
+}
+
 .asana-item {
   display: flex;
   align-items: center;

@@ -8,10 +8,16 @@ import Markdown from './Markdown.jsx';
 import SortableAsanaList from './SortableAsanaList.jsx';
 import { BackIcon } from './Icons.jsx';
 
+// 아사나가 많으면 글이 한참 아래로 밀리므로 처음 몇 개만 보여 주고 나머지는 접어 둔다.
+// 숨길 게 한두 개뿐이면 접는 의미가 없으니 그때는 모두 보여 준다.
+const COLLAPSED_COUNT = 5;
+const COLLAPSE_MIN_HIDDEN = 2;
+
 export default function RecordDetail({ record, onBack, onEdit, onDelete, onOpenAsana, onReorder }) {
   const { getAsana } = useAsanas();
   const [confirming, setConfirming] = useState(false);
   const [sorting, setSorting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState('');
 
   if (!record) {
@@ -28,6 +34,9 @@ export default function RecordDetail({ record, onBack, onEdit, onDelete, onOpenA
 
   const date = formatDate(record.date);
   const filledFields = TEXT_FIELDS.filter(({ key }) => record[key]);
+  const hiddenCount = record.asanaIds.length - COLLAPSED_COUNT;
+  const collapsible = hiddenCount >= COLLAPSE_MIN_HIDDEN;
+  const visibleIds = collapsible && !expanded ? record.asanaIds.slice(0, COLLAPSED_COUNT) : record.asanaIds;
 
   const handleReorder = async (ids) => {
     try {
@@ -78,8 +87,9 @@ export default function RecordDetail({ record, onBack, onEdit, onDelete, onOpenA
               <SortableAsanaList ids={record.asanaIds} onChange={handleReorder} />
             </>
           ) : (
+          <>
           <ul className="asana-list">
-            {record.asanaIds.map((id) => {
+            {visibleIds.map((id) => {
               const asana = getAsana(id);
               return (
                 <li key={id}>
@@ -92,6 +102,17 @@ export default function RecordDetail({ record, onBack, onEdit, onDelete, onOpenA
               );
             })}
           </ul>
+          {collapsible && (
+            <button
+              type="button"
+              className="button button--ghost button--block asana-list__toggle"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((e) => !e)}
+            >
+              {expanded ? '접기' : `${hiddenCount}개 더보기`}
+            </button>
+          )}
+          </>
           )}
         </section>
       )}
